@@ -1,4 +1,5 @@
 #include <sourcemod>
+#include <tf2>
 #include <dynamic>
 
 #pragma semicolon 1
@@ -18,6 +19,8 @@ public void OnPluginStart()
 {
 	spawnsRed = new ArrayList();
 	spawnsBlue = new ArrayList();
+
+	HookEvent("player_death", onPlayerDeath);
 }
 
 public void OnPluginEnd()
@@ -52,6 +55,22 @@ public void OnMapEnd()
 		s.Dispose();
 	}
 	spawnsBlue.Clear();
+}
+
+void onPlayerDeath(Event event, const char[] name, bool dontBroadcast)
+{
+	int victim = GetClientOfUserId(event.GetInt("userid"));
+	int attacker = GetClientOfUserId(event.GetInt("attacker"));
+
+	char attackerName[256];
+	if (GetClientName(attacker, attackerName, sizeof(attackerName))) {
+		if (attacker != victim) {
+			int hp = GetClientHealth(attacker);
+			PrintToChat(victim, "%s: %d", attackerName, hp);
+		}
+
+		CreateTimer(1.0, respawnPlayer, victim);
+	}
 }
 
 bool loadSpawns(char[] cfgPath)
@@ -102,4 +121,10 @@ bool loadSpawns(char[] cfgPath)
 	}
 
 	return true;
+}
+
+Action respawnPlayer(Handle timer, any client)
+{
+	TF2_RespawnPlayer(client);
+	return Plugin_Stop; // just in case
 }
