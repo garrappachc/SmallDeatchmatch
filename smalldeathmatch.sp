@@ -1,6 +1,7 @@
 #include <sourcemod>
 #include <tf2>
 #include <dynamic>
+#include <sdktools_functions>
 
 #pragma semicolon 1
 #pragma newdecls required
@@ -126,5 +127,32 @@ bool loadSpawns(char[] cfgPath)
 Action respawnPlayer(Handle timer, any client)
 {
 	TF2_RespawnPlayer(client);
-	return Plugin_Stop; // just in case
+
+	if (IsPlayerAlive(client)) {
+		int team = GetClientTeam(client);
+		Dynamic spawn;
+
+		switch (team) {
+			case TFTeam_Red: {
+				int idx = GetRandomInt(0, spawnsRed.Length - 1);
+				spawn = spawnsRed.Get(idx);
+			}
+
+			case TFTeam_Blue: {
+				int idx = GetRandomInt(0, spawnsBlue.Length - 1);
+				spawn = spawnsBlue.Get(idx);
+			}
+
+			default:
+				return Plugin_Stop;
+		}
+
+		float origin[3], angles[3];
+		spawn.GetVector("origin", origin);
+		spawn.GetVector("angles", angles);
+
+		TeleportEntity(client, origin, angles, NULL_VECTOR);
+	}
+
+	return Plugin_Stop;
 }
