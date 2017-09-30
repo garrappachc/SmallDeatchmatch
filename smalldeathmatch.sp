@@ -16,12 +16,15 @@ public Plugin myinfo = {
 
 ArrayList spawnsRed, spawnsBlue;
 
+ConVar cvRandomSpawns;
+
 public void OnPluginStart()
 {
 	spawnsRed = new ArrayList();
 	spawnsBlue = new ArrayList();
 
 	HookEvent("player_death", onPlayerDeath);
+	cvRandomSpawns = CreateConVar("smalldm_random_spawns", "1", "Specifies whether random spawns (i.e. team-independent) are enabled or not", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 }
 
 public void OnPluginEnd()
@@ -124,28 +127,36 @@ bool loadSpawns(char[] cfgPath)
 	return true;
 }
 
+Dynamic getRandomSpawn(int team)
+{
+	if (cvRandomSpawns.BoolValue) {
+		team = GetRandomInt(0, 1) + 2;
+	}
+
+	switch (team) {
+		case TFTeam_Red: {
+			int idx = GetRandomInt(0, spawnsRed.Length - 1);
+			return spawnsRed.Get(idx);
+		}
+
+		case TFTeam_Blue: {
+			int idx = GetRandomInt(0, spawnsBlue.Length - 1);
+			return spawnsBlue.Get(idx);
+		}
+	}
+
+	return INVALID_DYNAMIC_OBJECT;
+}
+
 Action respawnPlayer(Handle timer, any client)
 {
 	TF2_RespawnPlayer(client);
 
 	if (IsPlayerAlive(client)) {
 		int team = GetClientTeam(client);
-		Dynamic spawn;
-
-		switch (team) {
-			case TFTeam_Red: {
-				int idx = GetRandomInt(0, spawnsRed.Length - 1);
-				spawn = spawnsRed.Get(idx);
-			}
-
-			case TFTeam_Blue: {
-				int idx = GetRandomInt(0, spawnsBlue.Length - 1);
-				spawn = spawnsBlue.Get(idx);
-			}
-
-			default:
-				return Plugin_Stop;
-		}
+		Dynamic spawn = getRandomSpawn(team);
+		if (!spawn.IsValid)
+			return Plugin_Stop;
 
 		float origin[3], angles[3];
 		spawn.GetVector("origin", origin);
